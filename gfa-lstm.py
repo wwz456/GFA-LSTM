@@ -6,10 +6,10 @@ from tensorflow.keras.callbacks import ModelCheckpoint
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from sklearn.model_selection import train_test_split
 import matplotlib.pyplot as plt
-from tensorflow.keras.regularizers import l1  # 导入 l1 正则化器
+from tensorflow.keras.regularizers import l1  
 print(tf.__version__)
 
-# 自定义层 CompressFeatures
+# CompressFeatures
 class CompressFeatures(Layer):
     def call(self, inputs):
         max_compressed = tf.reduce_max(inputs, axis=1)
@@ -20,7 +20,7 @@ class CompressFeatures(Layer):
     def get_config(self):
         return super().get_config()
 
-# 自定义层 ComputeWeights
+# ComputeWeights
 class ComputeWeights(Layer):
     def __init__(self, mlp, **kwargs):
         super().__init__(**kwargs)
@@ -38,17 +38,15 @@ class ComputeWeights(Layer):
 
     def get_config(self):
         config = super().get_config().copy()
-        # 将 MLP 模型的配置保存为 JSON 格式的字符串
         config['mlp'] = self.mlp.to_json()
         return config
 
     @classmethod
     def from_config(cls, config):
-        # 从配置中创建 MLP 模型
         mlp = tf.keras.models.model_from_json(config['mlp'])
         return cls(mlp=mlp)
 
-# 自定义层 ApplyWeightsToInput
+# ApplyWeightsToInput
 class ApplyWeightsToInput(Layer):
     def call(self, inputs):
         input_data, weights = inputs
@@ -60,7 +58,7 @@ class ApplyWeightsToInput(Layer):
     def get_config(self):
         return super().get_config()
 
-# 创建共享 MLP
+# create shared MLP
 def create_shared_mlp(input_size, hidden_size, output_size):
     inputs = Input(shape=(input_size,))
     x = Dense(hidden_size, activation='relu')(inputs)
@@ -68,7 +66,7 @@ def create_shared_mlp(input_size, hidden_size, output_size):
     model = Model(inputs, outputs)
     return model
 from tensorflow.keras import regularizers
-# 构建模型
+# creat model
 def build_model(input_shape):
     T, N = input_shape
     hidden_size = N // 2
@@ -76,12 +74,14 @@ def build_model(input_shape):
     inputs = Input(shape=(T, N))
 
     compress_features_layer = CompressFeatures()(inputs)
+    # select if Stadardize the compress features layer or not
+    #...
     shared_mlp = create_shared_mlp(input_size=N, hidden_size=hidden_size, output_size=N)
     compute_weights_layer = ComputeWeights(shared_mlp)(compress_features_layer)
     weighted_input = ApplyWeightsToInput()([inputs, compute_weights_layer])
     flatten1 = Flatten()(weighted_input)
     acti0 = Activation('relu')(flatten1)
-    # 第一个 LSTM
+    # first LSTM
     lstm1 = LSTM(128, return_sequences=True)(inputs)
     dropout0 = Dropout(rate=0.1)(lstm1)
     bn1 = BatchNormalization()(dropout0)
@@ -90,7 +90,7 @@ def build_model(input_shape):
     bn2 = BatchNormalization()(dropout0_1)
     flatten2 = Flatten()(bn2)
     acti2 = Activation('relu')(flatten2)
-    # 拼接两个 LSTM 的输出
+    # concatenate the 2 output
     concatenated = Concatenate()([acti0, acti2])
 
 
@@ -108,28 +108,28 @@ def build_model(input_shape):
     model.summary()
     return model
 
-# 数据加载
+# data load
 def load_data(m, n, p, sub):
     if sub == 0:
-        data_m = np.load(r'F:\phd\yanshi\c{}_nosub.npy'.format(m))
-        data_n = np.load(r'F:\phd\yanshi\c{}_nosub.npy'.format(n))
-        X_test = np.load(r'F:\phd\yanshi\c{}_nosub.npy'.format(p))
+        data_m = np.load(r'E:\gfa-lstm\c{}_nosub.npy'.format(m))
+        data_n = np.load(r'E:\gfa-lstm\c{}_nosub.npy'.format(n))
+        X_test = np.load(r'E:\gfa-lstm\c{}_nosub.npy'.format(p))
     else:
-        data_m = np.load(r'F:\phd\yanshi\c{}_sub{}.npy'.format(m, sub))
-        data_n = np.load(r'F:\phd\yanshi\c{}_sub{}.npy'.format(n, sub))
-        X_test = np.load(r'F:\phd\yanshi\c{}_sub{}.npy'.format(p, sub))
+        data_m = np.load(r'E:\gfa-lstm\c{}_sub{}.npy'.format(m, sub))
+        data_n = np.load(r'E:\gfa-lstm\c{}_sub{}.npy'.format(n, sub))
+        X_test = np.load(r'E:\gfa-lstm\c{}_sub{}.npy'.format(p, sub))
 
-    label_m = np.load(r'F:\phd\yanshi\data_y{}.npy'.format(m))
-    label_n = np.load(r'F:\phd\yanshi\data_y{}.npy'.format(n))
-    y_test = np.load(r'F:\phd\yanshi\data_y{}.npy'.format(p))
+    label_m = np.load(r'E:\gfa-lstm\data_y{}.npy'.format(m))
+    label_n = np.load(r'E:\gfa-lstm\data_y{}.npy'.format(n))
+    y_test = np.load(r'E:\gfa-lstm\data_y{}.npy'.format(p))
 
     X = np.vstack((data_m, data_n))
     y = np.concatenate((label_m, label_n))
-    print("X的维度：", X.shape)
-    print("y的维度：", y.shape)
+    print("X-dimention：", X.shape)
+    print("y-dimention：", y.shape)
     return X, y, X_test, y_test
 
-# 数据标准化
+# normalize data
 def normalize_data(X, norm_method='std'):
     X_norm = None
     scaler = None
@@ -153,7 +153,7 @@ def normalize_data(X, norm_method='std'):
             print("error")
     return X_norm, scaler
 
-# 训练过程中的损失和准确度绘制
+# plot loss
 def plot_loss(epochs, train_loss, val_loss):
     plt.figure(figsize=(10, 5))
     plt.plot(range(epochs), train_loss, label='Train Loss')
@@ -164,9 +164,9 @@ def plot_loss(epochs, train_loss, val_loss):
     plt.tight_layout()
     plt.show()
 
-# 预测结果绘制
+# result plot
 def plot_train_test(true_test, pre_test):
-    plt.figure(figsize=(10, 3))  # 设置整体图形的figsize
+    plt.figure(figsize=(10, 3))  # figsize
     plt.xlabel('Cut Number')
     plt.ylabel('Tool Wear(μm)')
     plt.plot(range(len(true_test)), true_test, label='True value', color='r')
@@ -187,19 +187,19 @@ import numpy as np
 
 
 def evaluate_metrics(y_true, y_pred):
-    # 计算MSE
+    # MSE
     mse = mean_squared_error(y_true, y_pred)
 
-    # 计算RMSE
+    # RMSE
     rmse = np.sqrt(mse)
 
-    # 计算MAE
+    # MAE
     mae = mean_absolute_error(y_true, y_pred)
 
-    # 计算R2
+    # R2
     r2 = r2_score(y_true, y_pred)
 
-    # 返回所有指标
+    # return all the metrics
     return {
         'RMSE': rmse,
         'MSE': mse,
@@ -207,13 +207,13 @@ def evaluate_metrics(y_true, y_pred):
         'R2': r2
     }
 
-# 加载数据
+# data load
 X, y, X_test, y_test = load_data(1, 6, 4, 10)
 
-# 划分训练集和验证集
+# data split
 X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=40)
 
-# 标准化
+# normalize data
 X_train_norm, scaler = normalize_data(X_train, norm_method='min-max')
 X_val_norm = scaler.transform(X_val.reshape(X_val.shape[0], -1)).reshape(X_val.shape)
 X_test_norm = scaler.transform(X_test.reshape(X_test.shape[0], -1)).reshape(X_test.shape)
@@ -223,51 +223,51 @@ y_train = (y_train - min_y) / (max_y - min_y)
 y_val = (y_val - min_y) / (max_y - min_y)
 y_test = (y_test - min_y) / (max_y - min_y)
 
-# 设置输入数据的形状
+# set the shape of input data
 input_shape = (10, 144)
 
-# 创建和编译模型
+# create and compile model
 model = build_model(input_shape)
 model.compile(optimizer='nadam', loss='mean_squared_error', metrics=['mae'])
 
-# 训练模型
+# train the model
 checkpoint = ModelCheckpoint('best_model.keras', monitor='val_loss', save_best_only=True, mode='min', verbose=1)
 epochs = 150
 batch_size = 32
 
 history = model.fit(X_train_norm, y_train, validation_data=(X_val_norm, y_val), epochs=epochs, batch_size=batch_size, callbacks=[checkpoint])
 
-# 加载最佳模型
+# load the best model
 best_model = load_model('best_model.keras', custom_objects={
     'CompressFeatures': CompressFeatures,
     'ComputeWeights': ComputeWeights,
     'ApplyWeightsToInput': ApplyWeightsToInput
 })
 
-# 预测
+# predict and evaluate
 predictions = best_model.predict(X_val_norm).reshape(-1) * (max_y - min_y) + min_y
 y_pre = best_model.predict(X_test_norm).reshape(-1) * (max_y - min_y) + min_y
 
-# 绘制结果
+# plot the result
 plot_train_test(y_test * (max_y - min_y) + min_y, y_pre)
 
-# 评估
+# evaluate
 evaluate_val = evaluate_metrics(y_val * (max_y - min_y) + min_y, predictions)
 evaluate_test = evaluate_metrics(y_test * (max_y - min_y) + min_y,y_pre)
 
-# 绘制损失图
+# plot the loss
 plot_loss(epochs, history.history['loss'], history.history['val_loss'])
 plt.show()
-# 打印评估结果
+# print the result
 print(evaluate_val)
 print(evaluate_test)
 
-# 保存结果
-np.save(r'E:\phd\学习\literature review\thesis-origin\特征注意力\会议互联网+\chengxu\c4_gfa-lstm-retrain5.npy', y_pre)
+# save the result
+np.save(r'E:\gfa-lstm\c4_gfa-lstm-retrain5.npy', y_pre)
 evaluate_test['epochs'] = epochs
 evaluate_test['batchsize'] = batch_size
 
-with open(r'E:\phd\学习\literature review\thesis-origin\特征注意力\会议互联网+\chengxu\gfa-lstm_4-retrain5.txt', 'w') as file:
+with open(r'E:\gfa-lstm\gfa-lstm_4-retrain5.txt', 'w') as file:
     for metric, value in evaluate_test.items():
         file.write(f"{metric}: {value:.4f}\n")
 
