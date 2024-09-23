@@ -80,35 +80,36 @@ def build_model(input_shape):
     compute_weights_layer = ComputeWeights(shared_mlp)(compress_features_layer)
     weighted_input = ApplyWeightsToInput()([inputs, compute_weights_layer])
     flatten1 = Flatten()(weighted_input)
-    acti0 = Activation('relu')(flatten1)
+    acti0 = Activation('relu')(flatten1)#GeLu can be used to test
     # first LSTM
     lstm1 = LSTM(128, return_sequences=True)(inputs)
-    dropout0 = Dropout(rate=0.1)(lstm1)
+    dropout0 = Dropout(rate=0.1)(lstm1)#different dropout rate can be tested 
     bn1 = BatchNormalization()(dropout0)
-    lstm2 = LSTM(96, return_sequences=True,kernel_regularizer=l1(0.01))(bn1)#,kernel_regularizer=l1(0.01))
-    dropout0_1 = Dropout(rate=0.1)(lstm2)
+    lstm2 = LSTM(96, return_sequences=True,kernel_regularizer=l1(0.01))(bn1)#,kernel_regularizer=l1(0.01))#different l1 or l2 can be tested 
+    dropout0_1 = Dropout(rate=0.1)(lstm2)#different dropout rate can be tested 
     bn2 = BatchNormalization()(dropout0_1)
+    #more stacked-LSTM layers can be added 
     flatten2 = Flatten()(bn2)
-    acti2 = Activation('relu')(flatten2)
+    acti2 = Activation('relu')(flatten2)#dropout layer and rate can be tested 
     # concatenate the 2 output
     concatenated = Concatenate()([acti0, acti2])
 
 
     # acti = Activation('relu')(concatenated)
-    dropout1 = Dropout(rate=0.3)(concatenated)
+    dropout1 = Dropout(rate=0.3)(concatenated)#different dropout rate can be tested 
     # dense1 = Dense(128,activation='relu')(dropout1)
-    # dropout2=Dropout(rate=0.2)(dense1)
+    # dropout2=Dropout(rate=0.2)(dense1)#different dropout rate can be tested 
     #
     #
     # dense2 = Dense(64,activation='relu')(dropout2)
     # # acti=Activation('relu')(outputs)
-    # dropout3=Dropout(rate=0.2)(dense2)
-    dense3=Dense(1,activation='linear',kernel_regularizer=regularizers.L1(0.001))(dropout1)
+    # dropout3=Dropout(rate=0.2)(dense2)#different dropout rate can be tested 
+    dense3=Dense(1,activation='linear',kernel_regularizer=regularizers.L1(0.001))(dropout1)#different l1 or l2 can be tested 
     model = Model(inputs, dense3)
     model.summary()
     return model
 
-# data load
+# data load use data created by the sliding window method
 def load_data(m, n, p, sub):
     if sub == 0:
         data_m = np.load(r'E:\gfa-lstm\c{}_nosub.npy'.format(m))
@@ -224,16 +225,16 @@ y_val = (y_val - min_y) / (max_y - min_y)
 y_test = (y_test - min_y) / (max_y - min_y)
 
 # set the shape of input data
-input_shape = (10, 144)
+input_shape = (10, 144)# The time step can be changed to short/middle/long such as 20,40,60,80,100,120
 
 # create and compile model
 model = build_model(input_shape)
-model.compile(optimizer='nadam', loss='mean_squared_error', metrics=['mae'])
+model.compile(optimizer='nadam', loss='mean_squared_error', metrics=['mae'])#optimizer can be changed to adam or other optimizers
 
 # train the model
 checkpoint = ModelCheckpoint('best_model.keras', monitor='val_loss', save_best_only=True, mode='min', verbose=1)
 epochs = 150
-batch_size = 32
+batch_size = 32#different batch sizes can be tested to get high performance
 
 history = model.fit(X_train_norm, y_train, validation_data=(X_val_norm, y_val), epochs=epochs, batch_size=batch_size, callbacks=[checkpoint])
 
